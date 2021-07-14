@@ -21,7 +21,7 @@ class NotesController extends Controller
             return $notes;
 
         return response()->json([
-            'error' => 'El usuario especificado no existe.'
+            'error' => 'El usuario especificado no existe o no tiene notas registradas.'
         ]);
     }
         
@@ -35,7 +35,7 @@ class NotesController extends Controller
 
         if(!empty($note->id_usuario) && !empty($note->titulo) && !empty($note->contenido))
         {
-            DB::select('CALL spCrearNota(?, ?, ?)', [$note->id_usuario, $note->titulo, $note->contenido]);
+            DB::insert('CALL spCrearNota(?, ?, ?)', [$note->id_usuario, $note->titulo, $note->contenido]);
 
             return response()->json([
                 'message' => 'Note created successfully!',
@@ -58,11 +58,18 @@ class NotesController extends Controller
 
         if(!empty($note->id) || !empty($note->titulo) || !empty($note->contenido))
         {
-            DB::select('CALL spActualizarNota(?, ?, ?)', [$note->id, $note->titulo, $note->contenido]);
+            $result = DB::update('CALL spActualizarNota(?, ?, ?)', [$note->id, $note->titulo, $note->contenido]);
 
+            if($result > 0)
+            {
+                return response()->json([
+                    'message' => 'Note updated!',
+                    'data' => $note
+                ]);
+            }
+            
             return response()->json([
-                'message' => 'Note updated!',
-                'data' => $note
+                'error' => 'No note with id ' . $note->id . ' was found'
             ]);
         }
        
@@ -71,13 +78,19 @@ class NotesController extends Controller
         ]);
     }
 
-    public function deleteNote($userID, Request $request)
+    public function deleteNote($noteID)
     {
+        $result = DB::delete('CALL spEliminarNota(?)', [$noteID]);
 
-        $result = DB::select('CALL spEliminarNota(?)', [$userID]);
+        if($result > 0)
+        {
+            return response()->json([
+                'message' => 'Note deleted successfully!'
+            ]);
+        }
 
-        return json_encode([
-            'message' => 'Note deleted successfully!'
+        return response()->json([
+            'error' => 'No note with id ' . $noteID . ' was found'
         ]);
     }
 }
